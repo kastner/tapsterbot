@@ -21,6 +21,18 @@ var app = require('http').createServer(handler),
     var servo3 = five.Servo({
       pin: 11
     });
+    var pot = new five.Sensor({
+      pin: "A2",
+      freq: 20
+    });
+
+    pot.on("read", function( err, value ) {
+      scale = parseInt(((this.normalized + 20) / 255) * 100);
+      scale = scale / 100;
+      if (ballet.getScale() != scale) {
+        ballet.setScale(scale);
+      }
+    });
 
     board.repl.inject({
       servo1: servo1,
@@ -71,6 +83,10 @@ var app = require('http').createServer(handler),
     servo3.on("error", function() {
       console.log(arguments);
     })
+
+    ballet = require('./ballet.js');
+    ballet.startCircle();
+    ballet.startUpDown();
   });
 
 go = function(x, y, z) {
@@ -78,7 +94,7 @@ go = function(x, y, z) {
   s1.move(angles[1]);
   s2.move(angles[2]);
   s3.move(angles[3]);
-  console.log(angles);
+  //console.log(angles);
 }
 
 position = function() {
