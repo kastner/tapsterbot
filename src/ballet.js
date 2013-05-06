@@ -8,7 +8,7 @@
   var radius = 42;
   var zStart = z;
   var zTarget = -140;
-  var speed = 20;
+  var speed = 90;
   var zStartTime;
   var scale = 1;
   doingUpDown = false;

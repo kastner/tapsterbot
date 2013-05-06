@@ -85,8 +85,8 @@ var app = require('http').createServer(handler),
     })
 
     ballet = require('./ballet.js');
-    ballet.startCircle();
-    ballet.startUpDown();
+    //ballet.startCircle();
+    //ballet.startUpDown();
   });
 
 go = function(x, y, z) {
@@ -115,6 +115,12 @@ function handler(req, res) {
 
   if (req.url == "/control") {
     file = "/control.html";
+  }
+  if (req.url == "/audio") {
+    file = "/audio.html";
+  }
+  if (req.url == "/dancer.min.js") {
+    file = "/dancer.min.js";
   }
   if (req.url == "/tweetscreen.png") {
     file = "/tweetscreen.png";
@@ -156,6 +162,18 @@ io.sockets.on('connection', function(socket) {
     setTimeout(function() {
       moveZ(downZ);
     }, 100);
+
+  });
+
+  socket.on('goUp', function() {
+    go(0, 0, 100);
+    console.log("Going up");
+  });
+
+  socket.on('goDown', function() {
+    console.log("down??")
+    go(0, 0, 110);
+    console.log("Going DOWN");
   });
 
   socket.on('up', function() {

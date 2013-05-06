@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head lang="en">
+  <meta charset="utf-8">
+  <meta http-equiv="content-type" content="text/html;">
+  <title>Audio!</title>
+  <meta name="robots" content="index,follow">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var socket = io.connect();
+    socket.on('news', function (data) {
+      console.log(data);
+      socket.emit('device info', { "foo": "bar", "height": window.innerHeight, "width": window.innerWidth, orientation: window.orientation });
+    });
+
+    socket.on('reload', function (data) {
+      window.location = window.location;
+    });
+  </script>
+  <style>
+    body { margin: 0; padding: 0; height: 100%; }
+  </style>
+</head>
+<body>
+  <img src="/tweetscreen.png" id="screen" width="320" height="480">
+  <script src="/dancer.min.js"></script>
+  <script>
+  // var buflen = 1024;
+  var audioContext = new webkitAudioContext();
+
+  // var buf = new Uint8Array( buflen );
+  var analyser;
+  navigator.webkitGetUserMedia({audio:true}, gotStream, function(e) { console.log("Error:" + e)});
+
+  function gotStream(stream) {
+      // Create an AudioNode from the stream.
+      var mediaStreamSource = audioContext.createMediaStreamSource(stream);
+
+      // Connect it to the destination.
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      convertToMono( mediaStreamSource ).connect( analyser );
+      updatePitch();
+  }
+function convertToMono( input ) {
+    var splitter = audioContext.createChannelSplitter(2);
+    var merger = audioContext.createChannelMerger(2);
+
+    input.connect( splitter );
+    splitter.connect( merger, 0, 0 );
+    splitter.connect( merger, 0, 1 );
+    return merger;
+}
+var rafID = null;
+var tracks = null;
+var buflen = 1024;
+var buf = new Uint8Array( buflen );
+var MINVAL = 134;  // 128 == zero.  MINVAL is the "minimum detected signal" level.
+
+function findNextPositiveZeroCrossing( start ) {
+  var i = Math.ceil( start );
+  var last_zero = -1;
+  // advance until we're zero or negative
+  while (i<buflen && (buf[i] > 128 ) )
+    i++;
+  if (i>=buflen)
+    return -1;
+
+  // advance until we're above MINVAL, keeping track of last zero.
+  while (i<buflen && ((t=buf[i]) < MINVAL )) {
+    if (t >= 128) {
+      if (last_zero == -1)
+        last_zero = i;
+    } else
+      last_zero = -1;
+    i++;
+  }
+
+  // we may have jumped over MINVAL in one sample.
+  if (last_zero == -1)
+    last_zero = i;
+
+  if (i==buflen)  // We didn't find any more positive zero crossings
+    return -1;
+
+  // The first sample might be a zero.  If so, return it.
+  if (last_zero == 0)
+    return 0;
+
+  // Otherwise, the zero might be between two values, so we need to scale it.
+
+  var t = ( 128 - buf[last_zero-1] ) / (buf[last_zero] - buf[last_zero-1]);
+  return last_zero+t;
+}
+
+var max = 0;
+var lastMax = 0;
+function doMax() {
+  console.log((lastMax / max));
+
+  if ((max / lastMax) < 1) {
+    console.log('going up');
+    socket.emit('goUp');
+  } else {
+    console.log('going DOWN');
+    socket.emit('goDown');
+  }
+  lastMax = max;
+  max = 0;
+}
+
+setInterval(doMax, 350);
+
+  function updatePitch() {
+    analyser.getByteTimeDomainData( buf );
+    for (var i=0; i<28; i++) {
+      //console.log(i*8 + " - " + buf[i*8]);
+      if (buf[i] > max) { max = buf[i]; }
+    }
+    // console.log(max)
+    // console.log(buf[700]);
+      rafID = window.webkitRequestAnimationFrame( updatePitch );
+      // setTimeout(updatePitch, 1500);
+
+  }
+  </script>
+</body>
+</html>
